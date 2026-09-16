@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Consolas", monospace;
+
+  --color-scada-bg: #0b1014;
+  --color-scada-panel: #121a21;
+  --color-scada-panel-light: #1a2530;
+  --color-scada-border: #2a3a47;
+  --color-scada-border-light: #3a4d5c;
+  --color-scada-text: #c8d6e0;
+  --color-scada-text-dim: #6b8190;
+  --color-scada-amber: #ffb000;
+  --color-scada-green: #2ee66b;
+  --color-scada-green-dim: #18512c;
+  --color-scada-red: #ff3b3b;
+  --color-scada-red-dim: #5c1414;
+  --color-scada-blue: #2fa8ff;
+  --color-scada-blue-dim: #123a55;
+  --color-scada-cyan: #34e3e0;
+  --color-scada-gray: #4a5b68;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(ellipse at top, #101820 0%, #060a0d 70%);
+  color: var(--color-scada-text);
+  font-family: var(--font-sans);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-scada-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-scada-border-light);
+  border-radius: 4px;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px currentColor) drop-shadow(0 0 2px currentColor); opacity: 0.85; }
+  50% { filter: drop-shadow(0 0 14px currentColor) drop-shadow(0 0 6px currentColor); opacity: 1; }
+}
+
+@keyframes blink-fast {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.25; }
+}
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes wobble {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(1.5px) scaleY(1.02); }
+}
+
+@keyframes wave-drift {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes fade-in-down {
+  0% { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Marching-ants flow animation along an SVG pipe path's stroke-dasharray */
+@keyframes pipe-flow {
+  to { stroke-dashoffset: -24; }
+}
+
+.animate-pulse-glow { animation: pulse-glow 1.6s ease-in-out infinite; }
+.animate-blink-fast { animation: blink-fast 0.6s steps(1) infinite; }
+.animate-spin-slow { animation: spin-slow 2.5s linear infinite; }
+.animate-wobble { animation: wobble 3.2s ease-in-out infinite; }
+.animate-wave-drift { animation: wave-drift 6s linear infinite; }
+.animate-wave-drift-slow { animation: wave-drift 10s linear infinite reverse; }
+.animate-fade-in-down { animation: fade-in-down 0.25s ease-out; }
+.animate-pipe-flow { animation: pipe-flow 0.6s linear infinite; }
+
+.panel-bevel {
+  background: linear-gradient(180deg, var(--color-scada-panel-light) 0%, var(--color-scada-panel) 100%);
+  border: 1px solid var(--color-scada-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.03),
+    0 4px 12px rgba(0,0,0,0.4);
+}
+
+.text-glow-green { text-shadow: 0 0 6px rgba(46,230,107,0.6); }
+.text-glow-red { text-shadow: 0 0 6px rgba(255,59,59,0.6); }
+.text-glow-amber { text-shadow: 0 0 6px rgba(255,176,0,0.6); }
