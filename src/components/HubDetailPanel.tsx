@@ -1,15 +1,20 @@
 import { useState } from "react";
-import type { FlowHub } from "../types/flowHub";
+import type { FlowHub, HubLink } from "../types/flowHub";
 import { useIOConfig } from "../hooks/useIOConfig";
 import { useNetConfig } from "../hooks/useNetConfig";
 import { useSerialConnection } from "../hooks/useSerialConnection";
 import { useLiveRelayConnection } from "../hooks/useLiveRelayConnection";
 import { LiveRelayPanel } from "./LiveRelayPanel";
+import { HubInterconnections } from "./HubInterconnections";
 import { IOConfigPage } from "./IOConfigPage";
 import { NetworkConfigPage } from "./NetworkConfigPage";
 
 interface HubDetailPanelProps {
   hub: FlowHub;
+  hubs: FlowHub[];
+  links: HubLink[];
+  onCreateLink: (fromHubId: string, toHubId: string) => void;
+  onRemoveLink: (id: string) => void;
 }
 
 type HubSubView = "io" | "network";
@@ -28,7 +33,7 @@ const SUB_VIEWS: { key: HubSubView; label: string }[] = [
  * initializer, which only runs once per mount, same reason App.tsx already
  * keys <GenericSiteShell> on the active site id.
  */
-export function HubDetailPanel({ hub }: HubDetailPanelProps) {
+export function HubDetailPanel({ hub, hubs, links, onCreateLink, onRemoveLink }: HubDetailPanelProps) {
   const [subView, setSubView] = useState<HubSubView>("io");
   const ioConfig = useIOConfig(hub.id);
   const netConfig = useNetConfig(hub.id);
@@ -38,6 +43,8 @@ export function HubDetailPanel({ hub }: HubDetailPanelProps) {
   return (
     <div className="flex flex-col gap-5">
       <LiveRelayPanel hubId={hub.id} status={relay.status} log={relay.log} connect={relay.connect} disconnect={relay.disconnect} />
+
+      <HubInterconnections hub={hub} hubs={hubs} links={links} onCreateLink={onCreateLink} onRemoveLink={onRemoveLink} />
 
       <div className="inline-flex rounded-md border border-scada-border overflow-hidden self-start">
         {SUB_VIEWS.map((sv) => (

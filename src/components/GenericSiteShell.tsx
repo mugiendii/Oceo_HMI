@@ -1,9 +1,8 @@
 import { useState } from "react";
 import type { DeviceNode, DeviceType, DeviceWithSite, Site } from "../types/site";
 import type { FlowHub } from "../types/flowHub";
-import { useGenericSiteRuntime } from "../hooks/useGenericSiteRuntime";
-import { useRuleEngine } from "../hooks/useRuleEngine";
-import { buildGenericRuleContext } from "../rules/adapters";
+import type { SiteRuntime } from "../hooks/useGenericSiteRuntime";
+import type { RuleContext } from "../rules/types";
 import { DeviceCanvas } from "./canvas/DeviceCanvas";
 import { DevicePalette } from "./canvas/DevicePalette";
 import { DeviceInspector } from "./canvas/DeviceInspector";
@@ -11,7 +10,7 @@ import { RulesPage } from "./RulesPage";
 import { uid } from "../lib/uid";
 import { DEFAULT_ANALOG_RANGE } from "../config/boardIO";
 
-type CanvasMode = "run" | "edit";
+export type CanvasMode = "run" | "edit";
 
 interface GenericSiteShellProps {
   site: Site;
@@ -19,24 +18,27 @@ interface GenericSiteShellProps {
   onUpdateSite: (updater: (site: Site) => Site) => void;
   hubs: FlowHub[];
   allDevices: DeviceWithSite[];
+  /** Everything below is owned and kept ticking by SiteEngine, which mounts
+   * this shell only while its site is the one actually on screen -- see
+   * components/SiteEngine.tsx for why the runtime/rule-engine ownership
+   * moved out of this component. */
+  runtime: SiteRuntime;
+  toggleDevice: (id: string) => void;
+  ruleCtx: RuleContext;
+  mode: CanvasMode;
+  onModeChange: (mode: CanvasMode) => void;
 }
 
 /**
- * Mounted once per active generic site and kept alive across its internal
- * Process Diagram / Automation tab switch (both are just different `view`
- * renders below) -- that's deliberate: the runtime tick and rule engine
- * must keep running while the operator is looking at the Automation tab,
- * not just the diagram.
+ * The interactive view for one generic site's Process Diagram / Automation
+ * tabs. Purely a controlled view: the runtime tick, rule engine, and
+ * run/edit mode all live in the always-mounted SiteEngine that renders this
+ * component, so switching away and back doesn't reset or pause any of it.
  */
-export function GenericSiteShell({ site, view, onUpdateSite, hubs, allDevices }: GenericSiteShellProps) {
-  const { runtime, dispatch, toggleDevice } = useGenericSiteRuntime(site);
-  const [mode, setMode] = useState<CanvasMode>("run");
+export function GenericSiteShell({ site, view, onUpdateSite, hubs, allDevices, runtime, toggleDevice, ruleCtx, mode, onModeChange }: GenericSiteShellProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [connectFromId, setConnectFromId] = useState<string | null>(null);
-
-  const ruleCtx = buildGenericRuleContext(site, runtime, dispatch);
-  useRuleEngine(ruleCtx, site.rules, mode === "edit");
 
   const selectedDevice = site.devices.find((d) => d.id === selectedId) ?? null;
 
@@ -104,7 +106,7 @@ export function GenericSiteShell({ site, view, onUpdateSite, hubs, allDevices }:
             <button
               key={m}
               onClick={() => {
-                setMode(m);
+                onModeChange(m);
                 setConnecting(false);
                 setConnectFromId(null);
                 if (m === "run") setSelectedId(null);

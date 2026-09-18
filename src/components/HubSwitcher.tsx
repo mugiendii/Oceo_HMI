@@ -1,18 +1,19 @@
 import { useState } from "react";
-import type { FlowHub } from "../types/flowHub";
+import type { FlowHub, HubLink } from "../types/flowHub";
 import type { DeviceWithSite } from "../types/site";
 
 interface HubSwitcherProps {
   hubs: FlowHub[];
   activeHub: FlowHub;
   allDevices: DeviceWithSite[];
+  links: HubLink[];
   onSelect: (id: string) => void;
   onCreate: (name: string) => void;
   onDelete: (id: string) => void;
   onRename: (id: string, name: string) => void;
 }
 
-export function HubSwitcher({ hubs, activeHub, allDevices, onSelect, onCreate, onDelete, onRename }: HubSwitcherProps) {
+export function HubSwitcher({ hubs, activeHub, allDevices, links, onSelect, onCreate, onDelete, onRename }: HubSwitcherProps) {
   const [open, setOpen] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -24,11 +25,12 @@ export function HubSwitcher({ hubs, activeHub, allDevices, onSelect, onCreate, o
   }
 
   function handleDelete(hub: FlowHub) {
-    const count = allDevices.filter((e) => e.device.hubId === hub.id).length;
-    const msg =
-      count > 0
-        ? `Delete "${hub.name}"? ${count} device(s) across your sites reference it and will become unassigned. This can't be undone.`
-        : `Delete "${hub.name}"? This can't be undone.`;
+    const deviceCount = allDevices.filter((e) => e.device.hubId === hub.id).length;
+    const linkCount = links.filter((l) => l.fromHubId === hub.id || l.toHubId === hub.id).length;
+    const parts: string[] = [];
+    if (deviceCount > 0) parts.push(`${deviceCount} device(s) across your sites reference it and will become unassigned`);
+    if (linkCount > 0) parts.push(`${linkCount} interconnection(s) will be removed`);
+    const msg = parts.length > 0 ? `Delete "${hub.name}"? ${parts.join("; ")}. This can't be undone.` : `Delete "${hub.name}"? This can't be undone.`;
     if (confirm(msg)) onDelete(hub.id);
   }
 

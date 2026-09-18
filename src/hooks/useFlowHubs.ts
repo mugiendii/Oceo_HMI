@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import type { FlowHub } from "../types/flowHub";
+import type { FlowHub, HubLink } from "../types/flowHub";
 import { uid } from "../lib/uid";
 import { DEFAULT_HUB_ID } from "../config/hubDefaults";
 
 const HUBS_KEY = "oceo-hmi-hubs";
 const ACTIVE_KEY = "oceo-hmi-active-hub-id";
+const LINKS_KEY = "oceo-hmi-hub-links";
 
 /** The one hub every install starts with -- see DEFAULT_HUB_ID for why its
  * id is stable rather than a random uid. */
@@ -30,9 +31,21 @@ function loadInitialActiveId(hubs: FlowHub[]): string {
   return hubs[0].id;
 }
 
+function loadInitialLinks(): HubLink[] {
+  try {
+    const raw = localStorage.getItem(LINKS_KEY);
+    if (!raw) return [];
+    const saved = JSON.parse(raw);
+    return Array.isArray(saved) ? (saved as HubLink[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export function useFlowHubs() {
   const [hubs, setHubs] = useState<FlowHub[]>(loadInitialHubs);
   const [activeHubId, setActiveHubId] = useState<string>(() => loadInitialActiveId(hubs));
+  const [links, setLinks] = useState<HubLink[]>(loadInitialLinks);
 
   useEffect(() => {
     localStorage.setItem(HUBS_KEY, JSON.stringify(hubs));
@@ -41,6 +54,10 @@ export function useFlowHubs() {
   useEffect(() => {
     localStorage.setItem(ACTIVE_KEY, activeHubId);
   }, [activeHubId]);
+
+  useEffect(() => {
+    localStorage.setItem(LINKS_KEY, JSON.stringify(links));
+  }, [links]);
 
   const activeHub = hubs.find((h) => h.id === activeHubId) ?? hubs[0];
 
@@ -55,6 +72,10 @@ export function useFlowHubs() {
     if (hubs.length <= 1) return; // always keep at least one hub
     const next = hubs.filter((h) => h.id !== id);
     setHubs(next);
+    // This hook owns both hubs and links, so pruning happens right here with
+    // no cross-hook coordination needed -- unlike useSites.clearHubReferences,
+    // which has to reach across hooks for device/site hubId references.
+    setLinks((prev) => prev.filter((l) => l.fromHubId !== id && l.toHubId !== id));
     if (activeHubId === id) setActiveHubId(next[0].id);
   }
 
@@ -64,5 +85,18 @@ export function useFlowHubs() {
     setHubs((prev) => prev.map((h) => (h.id === id ? { ...h, name: trimmed } : h)));
   }
 
-  return { hubs, activeHub, activeHubId, setActiveHubId, createHub, deleteHub, renameHub };
+  function createLink(fromHubId: string, toHubId: string): void {
+    if (fromHubId === toHubId) return; // no self-links
+    const exists = links.some(
+      (l) => (l.fromHubId === fromHubId && l.toHubId === toHubId) || (l.fromHubId === toHubId && l.toHubId === fromHubId),
+    );
+    if (exists) return; // no duplicate links, either direction
+    setLinks((prev) => [...prev, { id: uid("link"), fromHubId, toHubId, createdAt: Date.now() }]);
+  }
+
+  function deleteLink(id: string): void {
+    setLinks((prev) => prev.filter((l) => l.id !== id));
+  }
+
+  return { hubs, activeHub, activeHubId, setActiveHubId, createHub, deleteHub, renameHub, links, createLink, deleteLink };
 }

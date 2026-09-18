@@ -9,3 +9,15 @@ export interface FlowHub {
   isDefault?: boolean;
   createdAt: number;
 }
+
+/** A hub-to-hub interconnection. Stored directionally (mirrors
+ * Connection{fromId,toId}'s shape for device pipes) but treated as
+ * symmetric everywhere it's consumed -- see rules/hubVisibility.ts. Direct
+ * links only for v1: no transitive multi-hop reachability. No self-links,
+ * no duplicate links in either direction -- enforced in useFlowHubs.createLink. */
+export interface HubLink {
+  id: string;
+  fromHubId: string;
+  toHubId: string;
+  createdAt: number;
+}

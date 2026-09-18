@@ -11,7 +11,7 @@ import { FiltrationDiagram } from "./components/FiltrationDiagram";
 import { LiveRelayPanel } from "./components/LiveRelayPanel";
 import { RulesPage } from "./components/RulesPage";
 import { SiteSwitcher } from "./components/SiteSwitcher";
-import { GenericSiteShell } from "./components/GenericSiteShell";
+import { SiteEngine } from "./components/SiteEngine";
 import { HubsPage } from "./components/HubsPage";
 import { TEMPLATES } from "./config/templates";
 
@@ -43,7 +43,7 @@ function App() {
   const [view, setView] = useState<View>("diagram");
   const { state, controls, isLive, live } = useFiltrationData();
   const { sites, activeSite, setActiveSiteId, createSite, deleteSite, renameSite, updateSite, clearHubReferences } = useSites();
-  const { hubs, activeHubId, setActiveHubId, createHub, deleteHub, renameHub } = useFlowHubs();
+  const { hubs, activeHubId, setActiveHubId, createHub, deleteHub, renameHub, links, createLink, deleteLink } = useFlowHubs();
 
   // Every device across every site, at once -- only App.tsx/useSites ever
   // see all sites, so this is the only place a hub's channel-conflict check
@@ -167,10 +167,13 @@ function App() {
             hubs={hubs}
             activeHubId={activeHubId}
             allDevices={allDevices}
+            links={links}
             onSelectHub={setActiveHubId}
             onCreateHub={createHub}
             onDeleteHub={handleDeleteHub}
             onRenameHub={renameHub}
+            onCreateLink={createLink}
+            onRemoveLink={deleteLink}
           />
         )}
 
@@ -182,16 +185,20 @@ function App() {
           />
         )}
 
-        {!activeSite.isLegacy && (view === "diagram" || view === "automation") && (
-          <GenericSiteShell
-            key={activeSite.id}
-            site={activeSite}
-            view={view === "automation" ? "automation" : "diagram"}
-            onUpdateSite={(updater) => updateSite(activeSite.id, updater)}
-            hubs={hubs}
-            allDevices={allDevices}
-          />
-        )}
+        {sites
+          .filter((s) => !s.isLegacy)
+          .map((site) => (
+            <SiteEngine
+              key={site.id}
+              site={site}
+              isActive={site.id === activeSite.id}
+              view={view}
+              onUpdateSite={(updater) => updateSite(site.id, updater)}
+              hubs={hubs}
+              allDevices={allDevices}
+              hubLinks={links}
+            />
+          ))}
       </main>
 
       <footer className="max-w-7xl mx-auto px-4 py-6 text-center text-[11px] text-scada-text-dim">
