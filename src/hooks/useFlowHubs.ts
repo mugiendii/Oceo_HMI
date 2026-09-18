@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { FlowHub, HubLink } from "../types/flowHub";
+import type { FlowHub, HubLink, HubLinkMedium } from "../types/flowHub";
 import { uid } from "../lib/uid";
 import { DEFAULT_HUB_ID } from "../config/hubDefaults";
 
@@ -85,18 +85,22 @@ export function useFlowHubs() {
     setHubs((prev) => prev.map((h) => (h.id === id ? { ...h, name: trimmed } : h)));
   }
 
-  function createLink(fromHubId: string, toHubId: string): void {
+  function createLink(fromHubId: string, toHubId: string, medium?: HubLinkMedium): void {
     if (fromHubId === toHubId) return; // no self-links
     const exists = links.some(
       (l) => (l.fromHubId === fromHubId && l.toHubId === toHubId) || (l.fromHubId === toHubId && l.toHubId === fromHubId),
     );
     if (exists) return; // no duplicate links, either direction
-    setLinks((prev) => [...prev, { id: uid("link"), fromHubId, toHubId, createdAt: Date.now() }]);
+    setLinks((prev) => [...prev, { id: uid("link"), fromHubId, toHubId, medium, createdAt: Date.now() }]);
   }
 
   function deleteLink(id: string): void {
     setLinks((prev) => prev.filter((l) => l.id !== id));
   }
 
-  return { hubs, activeHub, activeHubId, setActiveHubId, createHub, deleteHub, renameHub, links, createLink, deleteLink };
+  function setLinkMedium(id: string, medium: HubLinkMedium | undefined): void {
+    setLinks((prev) => prev.map((l) => (l.id === id ? { ...l, medium } : l)));
+  }
+
+  return { hubs, activeHub, activeHubId, setActiveHubId, createHub, deleteHub, renameHub, links, createLink, deleteLink, setLinkMedium };
 }

@@ -10,6 +10,12 @@ export interface FlowHub {
   createdAt: number;
 }
 
+/** The physical transport two interconnected hubs actually communicate
+ * over -- purely descriptive record-keeping, no effect on the automation
+ * visibility a HubLink grants (see rules/hubVisibility.ts), same as a
+ * device's label doesn't affect its behavior. Undefined = not specified. */
+export type HubLinkMedium = "wired" | "wireless";
+
 /** A hub-to-hub interconnection. Stored directionally (mirrors
  * Connection{fromId,toId}'s shape for device pipes) but treated as
  * symmetric everywhere it's consumed -- see rules/hubVisibility.ts. Direct
@@ -19,5 +25,6 @@ export interface HubLink {
   id: string;
   fromHubId: string;
   toHubId: string;
+  medium?: HubLinkMedium;
   createdAt: number;
 }

@@ -1,12 +1,26 @@
 import { useState } from "react";
-import type { FlowHub, HubLink } from "../types/flowHub";
+import type { FlowHub, HubLink, HubLinkMedium } from "../types/flowHub";
 
 interface HubInterconnectionsProps {
   hub: FlowHub;
   hubs: FlowHub[];
   links: HubLink[];
-  onCreateLink: (fromHubId: string, toHubId: string) => void;
+  onCreateLink: (fromHubId: string, toHubId: string, medium?: HubLinkMedium) => void;
   onRemoveLink: (id: string) => void;
+  onSetLinkMedium: (id: string, medium: HubLinkMedium | undefined) => void;
+}
+
+/** A <select> for HubLinkMedium | undefined, sharing the same "" ==
+ * unspecified convention as every other optional picker in this app (e.g.
+ * DeviceInspector's Output Channel). */
+function MediumSelect({ value, onChange, className }: { value: HubLinkMedium | undefined; onChange: (v: HubLinkMedium | undefined) => void; className: string }) {
+  return (
+    <select value={value ?? ""} onChange={(e) => onChange((e.target.value || undefined) as HubLinkMedium | undefined)} className={className}>
+      <option value="">Unspecified</option>
+      <option value="wired">Wired</option>
+      <option value="wireless">Wireless</option>
+    </select>
+  );
 }
 
 /**
@@ -14,10 +28,13 @@ interface HubInterconnectionsProps {
  * for the automation-visibility consequence (linking two hubs lets each
  * side's rules read/drive the other's devices). Hubs have no x/y canvas
  * position to draw a graph against (unlike devices' "Connect Devices"), so
- * this is a simple picker + list instead.
+ * this is a simple picker + list instead. `medium` (wired/wireless) is
+ * purely descriptive record-keeping of the real physical transport between
+ * two boards -- it has no bearing on the automation visibility above.
  */
-export function HubInterconnections({ hub, hubs, links, onCreateLink, onRemoveLink }: HubInterconnectionsProps) {
+export function HubInterconnections({ hub, hubs, links, onCreateLink, onRemoveLink, onSetLinkMedium }: HubInterconnectionsProps) {
   const [selected, setSelected] = useState("");
+  const [newMedium, setNewMedium] = useState<HubLinkMedium | undefined>(undefined);
 
   const hubLinks = links.filter((l) => l.fromHubId === hub.id || l.toHubId === hub.id);
   const otherHubId = (l: HubLink) => (l.fromHubId === hub.id ? l.toHubId : l.fromHubId);
@@ -27,8 +44,9 @@ export function HubInterconnections({ hub, hubs, links, onCreateLink, onRemoveLi
 
   function handleCreate() {
     if (!selected) return;
-    onCreateLink(hub.id, selected);
+    onCreateLink(hub.id, selected, newMedium);
     setSelected("");
+    setNewMedium(undefined);
   }
 
   return (
@@ -43,12 +61,19 @@ export function HubInterconnections({ hub, hubs, links, onCreateLink, onRemoveLi
         {hubLinks.map((l) => (
           <div key={l.id} className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md bg-scada-panel-light text-xs">
             <span className="text-scada-text font-semibold">{nameOf(otherHubId(l))}</span>
-            <button
-              onClick={() => onRemoveLink(l.id)}
-              className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded border border-scada-red text-scada-red hover:bg-scada-red-dim/30 transition-colors"
-            >
-              Remove
-            </button>
+            <div className="flex items-center gap-2">
+              <MediumSelect
+                value={l.medium}
+                onChange={(medium) => onSetLinkMedium(l.id, medium)}
+                className="bg-scada-panel border border-scada-border rounded-md px-2 py-1 text-[11px] text-scada-text focus:outline-none focus:border-scada-blue"
+              />
+              <button
+                onClick={() => onRemoveLink(l.id)}
+                className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded border border-scada-red text-scada-red hover:bg-scada-red-dim/30 transition-colors"
+              >
+                Remove
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -67,6 +92,11 @@ export function HubInterconnections({ hub, hubs, links, onCreateLink, onRemoveLi
               </option>
             ))}
           </select>
+          <MediumSelect
+            value={newMedium}
+            onChange={setNewMedium}
+            className="bg-scada-panel border border-scada-border rounded-md px-2 py-1.5 text-xs text-scada-text focus:outline-none focus:border-scada-blue"
+          />
           <button
             onClick={handleCreate}
             disabled={!selected}
