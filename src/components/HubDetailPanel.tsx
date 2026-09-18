@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { FlowHub, HubLink } from "../types/flowHub";
+import type { FlowHub, HubLink, HubLinkMedium } from "../types/flowHub";
 import { useIOConfig } from "../hooks/useIOConfig";
 import { useNetConfig } from "../hooks/useNetConfig";
 import { useSerialConnection } from "../hooks/useSerialConnection";
@@ -13,8 +13,9 @@ interface HubDetailPanelProps {
   hub: FlowHub;
   hubs: FlowHub[];
   links: HubLink[];
-  onCreateLink: (fromHubId: string, toHubId: string) => void;
+  onCreateLink: (fromHubId: string, toHubId: string, medium?: HubLinkMedium) => void;
   onRemoveLink: (id: string) => void;
+  onSetLinkMedium: (id: string, medium: HubLinkMedium | undefined) => void;
 }
 
 type HubSubView = "io" | "network";
@@ -33,7 +34,7 @@ const SUB_VIEWS: { key: HubSubView; label: string }[] = [
  * initializer, which only runs once per mount, same reason App.tsx already
  * keys <GenericSiteShell> on the active site id.
  */
-export function HubDetailPanel({ hub, hubs, links, onCreateLink, onRemoveLink }: HubDetailPanelProps) {
+export function HubDetailPanel({ hub, hubs, links, onCreateLink, onRemoveLink, onSetLinkMedium }: HubDetailPanelProps) {
   const [subView, setSubView] = useState<HubSubView>("io");
   const ioConfig = useIOConfig(hub.id);
   const netConfig = useNetConfig(hub.id);
@@ -44,7 +45,14 @@ export function HubDetailPanel({ hub, hubs, links, onCreateLink, onRemoveLink }:
     <div className="flex flex-col gap-5">
       <LiveRelayPanel hubId={hub.id} status={relay.status} log={relay.log} connect={relay.connect} disconnect={relay.disconnect} />
 
-      <HubInterconnections hub={hub} hubs={hubs} links={links} onCreateLink={onCreateLink} onRemoveLink={onRemoveLink} />
+      <HubInterconnections
+        hub={hub}
+        hubs={hubs}
+        links={links}
+        onCreateLink={onCreateLink}
+        onRemoveLink={onRemoveLink}
+        onSetLinkMedium={onSetLinkMedium}
+      />
 
       <div className="inline-flex rounded-md border border-scada-border overflow-hidden self-start">
         {SUB_VIEWS.map((sv) => (

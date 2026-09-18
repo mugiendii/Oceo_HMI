@@ -1,4 +1,4 @@
-import type { FlowHub, HubLink } from "../types/flowHub";
+import type { FlowHub, HubLink, HubLinkMedium } from "../types/flowHub";
 import type { DeviceWithSite } from "../types/site";
 import { HubSwitcher } from "./HubSwitcher";
 import { HubDetailPanel } from "./HubDetailPanel";
@@ -12,8 +12,9 @@ interface HubsPageProps {
   onCreateHub: (name: string) => void;
   onDeleteHub: (id: string) => void;
   onRenameHub: (id: string, name: string) => void;
-  onCreateLink: (fromHubId: string, toHubId: string) => void;
+  onCreateLink: (fromHubId: string, toHubId: string, medium?: HubLinkMedium) => void;
   onRemoveLink: (id: string) => void;
+  onSetLinkMedium: (id: string, medium: HubLinkMedium | undefined) => void;
 }
 
 export function HubsPage({
@@ -27,6 +28,7 @@ export function HubsPage({
   onRenameHub,
   onCreateLink,
   onRemoveLink,
+  onSetLinkMedium,
 }: HubsPageProps) {
   const activeHub = hubs.find((h) => h.id === activeHubId) ?? hubs[0];
 
@@ -48,7 +50,15 @@ export function HubsPage({
         />
       </div>
 
-      <HubDetailPanel key={activeHub.id} hub={activeHub} hubs={hubs} links={links} onCreateLink={onCreateLink} onRemoveLink={onRemoveLink} />
+      <HubDetailPanel
+        key={activeHub.id}
+        hub={activeHub}
+        hubs={hubs}
+        links={links}
+        onCreateLink={onCreateLink}
+        onRemoveLink={onRemoveLink}
+        onSetLinkMedium={onSetLinkMedium}
+      />
     </div>
   );
 }

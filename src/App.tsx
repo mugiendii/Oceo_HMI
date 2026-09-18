@@ -43,7 +43,7 @@ function App() {
   const [view, setView] = useState<View>("diagram");
   const { state, controls, isLive, live } = useFiltrationData();
   const { sites, activeSite, setActiveSiteId, createSite, deleteSite, renameSite, updateSite, clearHubReferences } = useSites();
-  const { hubs, activeHubId, setActiveHubId, createHub, deleteHub, renameHub, links, createLink, deleteLink } = useFlowHubs();
+  const { hubs, activeHubId, setActiveHubId, createHub, deleteHub, renameHub, links, createLink, deleteLink, setLinkMedium } = useFlowHubs();
 
   // Every device across every site, at once -- only App.tsx/useSites ever
   // see all sites, so this is the only place a hub's channel-conflict check
@@ -174,6 +174,7 @@ function App() {
             onRenameHub={renameHub}
             onCreateLink={createLink}
             onRemoveLink={deleteLink}
+            onSetLinkMedium={setLinkMedium}
           />
         )}
 
