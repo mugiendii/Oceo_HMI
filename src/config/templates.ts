@@ -1,11 +1,14 @@
 import type { Connection, DeviceNode, Site } from "../types/site";
 import { uid } from "../lib/uid";
 import { DEFAULT_ANALOG_RANGE } from "./boardIO";
+import { DEFAULT_HUB_ID } from "./hubDefaults";
 
 type DeviceInit = Omit<DeviceNode, "id"> & { id?: string };
 
 function device(init: DeviceInit): DeviceNode {
-  return { id: uid(init.type), ...init };
+  // Every non-tank device starts wired to the default hub -- tanks have no
+  // channel of their own, only an optional mirrored sensor.
+  return { id: uid(init.type), ...(init.type !== "tank" ? { hubId: DEFAULT_HUB_ID } : {}), ...init };
 }
 
 function connect(from: DeviceNode, to: DeviceNode): Connection {
@@ -26,7 +29,7 @@ function analogSensor(label: string, inputChannel: DeviceInit["inputChannel"], x
 }
 
 function baseSite(name: string, templateId: string): Omit<Site, "devices" | "connections" | "rules"> {
-  return { id: uid("site"), name, templateId, createdAt: Date.now() };
+  return { id: uid("site"), name, templateId, defaultHubId: DEFAULT_HUB_ID, createdAt: Date.now() };
 }
 
 function blank(name: string): Site {

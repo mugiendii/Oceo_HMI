@@ -1,12 +1,19 @@
 import { useEffect, useState } from "react";
 import type { NetConfig } from "../types/network";
 import { DEFAULT_NET_CONFIG } from "../config/netDefaults";
+import { DEFAULT_HUB_ID } from "../config/hubDefaults";
 
-const STORAGE_KEY = "oceo-hmi-net-config";
+// Pre-multi-hub installs kept one global config under this key.
+const LEGACY_STORAGE_KEY = "oceo-hmi-net-config";
+const storageKey = (hubId: string) => `oceo-hmi-net-config:${hubId}`;
 
-function loadInitial(): NetConfig {
+function loadInitial(hubId: string): NetConfig {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    let raw = localStorage.getItem(storageKey(hubId));
+    // One-time adoption: fold any pre-existing global config into the
+    // default hub's scoped key so upgrading users don't lose their setup. A
+    // freshly created (non-default) hub has nothing to adopt.
+    if (raw === null && hubId === DEFAULT_HUB_ID) raw = localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return DEFAULT_NET_CONFIG;
     return { ...DEFAULT_NET_CONFIG, ...JSON.parse(raw) };
   } catch {
@@ -14,12 +21,12 @@ function loadInitial(): NetConfig {
   }
 }
 
-export function useNetConfig() {
-  const [config, setConfig] = useState<NetConfig>(loadInitial);
+export function useNetConfig(hubId: string) {
+  const [config, setConfig] = useState<NetConfig>(() => loadInitial(hubId));
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  }, [config]);
+    localStorage.setItem(storageKey(hubId), JSON.stringify(config));
+  }, [hubId, config]);
 
   function setField<K extends keyof NetConfig>(key: K, value: NetConfig[K]) {
     setConfig((prev) => ({ ...prev, [key]: value }));

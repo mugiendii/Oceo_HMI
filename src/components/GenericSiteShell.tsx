@@ -1,5 +1,6 @@
 import { useState } from "react";
-import type { DeviceNode, DeviceType, Site } from "../types/site";
+import type { DeviceNode, DeviceType, DeviceWithSite, Site } from "../types/site";
+import type { FlowHub } from "../types/flowHub";
 import { useGenericSiteRuntime } from "../hooks/useGenericSiteRuntime";
 import { useRuleEngine } from "../hooks/useRuleEngine";
 import { buildGenericRuleContext } from "../rules/adapters";
@@ -16,6 +17,8 @@ interface GenericSiteShellProps {
   site: Site;
   view: "diagram" | "automation";
   onUpdateSite: (updater: (site: Site) => Site) => void;
+  hubs: FlowHub[];
+  allDevices: DeviceWithSite[];
 }
 
 /**
@@ -25,7 +28,7 @@ interface GenericSiteShellProps {
  * must keep running while the operator is looking at the Automation tab,
  * not just the diagram.
  */
-export function GenericSiteShell({ site, view, onUpdateSite }: GenericSiteShellProps) {
+export function GenericSiteShell({ site, view, onUpdateSite, hubs, allDevices }: GenericSiteShellProps) {
   const { runtime, dispatch, toggleDevice } = useGenericSiteRuntime(site);
   const [mode, setMode] = useState<CanvasMode>("run");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -46,6 +49,7 @@ export function GenericSiteShell({ site, view, onUpdateSite }: GenericSiteShellP
       label,
       x,
       y,
+      ...(type !== "tank" ? { hubId: site.defaultHubId } : {}),
       ...(type === "sensor" ? { unit: DEFAULT_ANALOG_RANGE.unit, rangeMin: DEFAULT_ANALOG_RANGE.min, rangeMax: DEFAULT_ANALOG_RANGE.max } : {}),
     };
     onUpdateSite((s) => ({ ...s, devices: [...s.devices, newDevice] }));
@@ -126,6 +130,23 @@ export function GenericSiteShell({ site, view, onUpdateSite }: GenericSiteShellP
             {connecting ? (connectFromId ? "Click second device…" : "Click first device…") : "Connect Devices"}
           </button>
         )}
+        {mode === "edit" && (
+          <label className="flex items-center gap-1.5 text-[11px] font-bold tracking-widest uppercase text-scada-text-dim">
+            Primary Hub
+            <select
+              value={site.defaultHubId ?? ""}
+              onChange={(e) => onUpdateSite((s) => ({ ...s, defaultHubId: e.target.value || undefined }))}
+              className="bg-scada-panel border border-scada-border rounded-md px-2 py-1 text-[11px] font-mono normal-case text-scada-text focus:outline-none focus:border-scada-blue"
+            >
+              <option value="">Unassigned</option>
+              {hubs.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <span className="text-xs text-scada-text-dim">
           {mode === "edit"
             ? "Drag devices from the palette onto the canvas, drag to reposition, click to configure."
@@ -151,7 +172,16 @@ export function GenericSiteShell({ site, view, onUpdateSite }: GenericSiteShellP
             onPipeClick={handlePipeClick}
           />
         </div>
-        {mode === "edit" && <DeviceInspector device={selectedDevice} devices={site.devices} onChange={handleChangeDevice} onDelete={handleDeleteDevice} />}
+        {mode === "edit" && (
+          <DeviceInspector
+            device={selectedDevice}
+            devices={site.devices}
+            allDevices={allDevices}
+            hubs={hubs}
+            onChange={handleChangeDevice}
+            onDelete={handleDeleteDevice}
+          />
+        )}
       </div>
     </div>
   );

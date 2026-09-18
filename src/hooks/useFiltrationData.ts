@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { filtrationSimulator } from "../mock/filtrationSimulator";
 import { adaptLiveState } from "../live/liveFiltrationAdapter";
-import { liveClient, type LiveLogEntry, type LiveStatus } from "../live/liveClient";
+import { getLiveClient, type LiveLogEntry, type LiveStatus } from "../live/liveClient";
+import { DEFAULT_HUB_ID } from "../config/hubDefaults";
 import type { SolenoidId, SystemState } from "../types/filtration";
 
 const MAX_LOG_LINES = 200;
+
+// The legacy filtration skid is always wired to the default hub -- it isn't
+// a generic per-device-hub canvas, so it has no hub picker of its own. This
+// resolves to the same cached client instance the Flow Hubs page's default
+// hub panel uses, so both views reflect one real connection, never two.
+const liveClient = getLiveClient(DEFAULT_HUB_ID);
 
 export function useFiltrationData() {
   const [mockState, setMockState] = useState<SystemState>(() => filtrationSimulator.getState());

@@ -21,6 +21,10 @@ export interface DeviceNode {
   unit?: string;
   rangeMin?: number;
   rangeMax?: number;
+  // ---- which physical FlowHub board this device is wired to (pump | valve | sensor | alarm; never tank) ----
+  // A channel/bus address is only unique *within* a hub, so this must be set
+  // for outputChannel/inputChannel/busAddress conflict checks to mean anything.
+  hubId?: string;
   // ---- I/O binding, one per type ----
   outputChannel?: OutputChannel; // valve | alarm
   inputChannel?: AnalogInputChannel; // sensor
@@ -56,8 +60,23 @@ export interface Site {
   templateId: string;
   /** true only for the single auto-created original filtration skid -- see useSites.ts */
   isLegacy?: boolean;
+  /** Primary hub stamped onto newly-dropped devices on this site's canvas.
+   * Not retroactive -- changing it doesn't reassign existing devices. Unused
+   * by the legacy site, which isn't a generic per-device-hub canvas. */
+  defaultHubId?: string;
   devices: DeviceNode[];
   connections: Connection[];
   rules: Rule[];
   createdAt: number;
+}
+
+/** A device plus which site it lives on -- used for cross-site, hub-scoped
+ * channel-conflict checks in DeviceInspector, since a real board's channel
+ * budget is shared across every site an operator models devices under.
+ * Built once in App.tsx from every site's device list (only App.tsx/useSites
+ * see all sites at once). */
+export interface DeviceWithSite {
+  device: DeviceNode;
+  siteId: string;
+  siteName: string;
 }

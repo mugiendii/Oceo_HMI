@@ -196,4 +196,25 @@ class SerialClient {
   }
 }
 
-export const serialClient = new SerialClient();
+const registry = new Map<string, SerialClient>();
+
+/** Each FlowHub board gets its own serial connection -- lazily created and
+ * cached per hub id, so N boards can each hold their own open port at once. */
+export function getSerialClient(hubId: string): SerialClient {
+  let client = registry.get(hubId);
+  if (!client) {
+    client = new SerialClient();
+    registry.set(hubId, client);
+  }
+  return client;
+}
+
+/** Closes and evicts a hub's serial client -- call when a hub is deleted so
+ * its port doesn't stay silently open with no UI left to close it from. */
+export function releaseSerialClient(hubId: string): void {
+  const client = registry.get(hubId);
+  if (client) {
+    client.disconnect().catch(() => {});
+    registry.delete(hubId);
+  }
+}

@@ -119,4 +119,25 @@ class LiveClient {
   }
 }
 
-export const liveClient = new LiveClient();
+const registry = new Map<string, LiveClient>();
+
+/** Each FlowHub board gets its own relay WebSocket -- lazily created and
+ * cached per hub id, so N boards can each stay connected concurrently. */
+export function getLiveClient(hubId: string): LiveClient {
+  let client = registry.get(hubId);
+  if (!client) {
+    client = new LiveClient();
+    registry.set(hubId, client);
+  }
+  return client;
+}
+
+/** Closes and evicts a hub's live client -- call when a hub is deleted so
+ * its socket doesn't stay silently open with no UI left to close it from. */
+export function releaseLiveClient(hubId: string): void {
+  const client = registry.get(hubId);
+  if (client) {
+    client.disconnect();
+    registry.delete(hubId);
+  }
+}

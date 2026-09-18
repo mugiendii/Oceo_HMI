@@ -7,6 +7,13 @@ relay sits between the broker and here, speaking plain WebSocket JSON.
 
 Source of truth in code: [`src/live/liveClient.ts`](../src/live/liveClient.ts).
 
+Each FlowHub board gets its own independent WebSocket connection to its own
+`mqtt_relay_oceo` instance -- the HMI can hold several of these open
+concurrently (one per hub, via `getLiveClient(hubId)`), each speaking exactly
+this same protocol independently. There is no hub identifier in any
+message; a hub's identity is which WebSocket connection the message arrived
+on, not anything in the payload.
+
 ## Transport
 
 | Setting  | Value |

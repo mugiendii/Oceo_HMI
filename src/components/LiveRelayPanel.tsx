@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import type { LiveLogEntry, LiveStatus } from "../live/liveClient";
+import { DEFAULT_HUB_ID } from "../config/hubDefaults";
 
 interface LiveRelayPanelProps {
+  hubId: string;
   status: LiveStatus;
   log: LiveLogEntry[];
   connect: (url: string) => Promise<void>;
   disconnect: () => void;
 }
 
-const STORAGE_KEY = "oceo-hmi-relay-url";
+// Pre-multi-hub installs kept one global relay URL under this key.
+const LEGACY_STORAGE_KEY = "oceo-hmi-relay-url";
+const storageKey = (hubId: string) => `oceo-hmi-relay-url:${hubId}`;
 const DEFAULT_URL = "ws://127.0.0.1:8766";
 
 const STATUS_LABEL: Record<LiveStatus, string> = {
@@ -23,8 +27,18 @@ const STATUS_COLOR: Record<LiveStatus, string> = {
   connected: "text-scada-green",
 };
 
-export function LiveRelayPanel({ status, log, connect, disconnect }: LiveRelayPanelProps) {
-  const [url, setUrl] = useState(() => localStorage.getItem(STORAGE_KEY) ?? DEFAULT_URL);
+export function LiveRelayPanel({ hubId, status, log, connect, disconnect }: LiveRelayPanelProps) {
+  const [url, setUrl] = useState(() => {
+    const raw = localStorage.getItem(storageKey(hubId));
+    if (raw !== null) return raw;
+    // One-time adoption: fold the pre-existing global relay URL into the
+    // default hub's scoped key so upgrading users don't lose their setup.
+    if (hubId === DEFAULT_HUB_ID) {
+      const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (legacy !== null) return legacy;
+    }
+    return DEFAULT_URL;
+  });
   const [error, setError] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const connected = status === "connected";
@@ -34,8 +48,8 @@ export function LiveRelayPanel({ status, log, connect, disconnect }: LiveRelayPa
   }, [log]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, url);
-  }, [url]);
+    localStorage.setItem(storageKey(hubId), url);
+  }, [hubId, url]);
 
   async function handleConnect() {
     setError(null);

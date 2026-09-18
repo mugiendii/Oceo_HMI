@@ -1,21 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFiltrationData } from "./hooks/useFiltrationData";
-import { useIOConfig } from "./hooks/useIOConfig";
-import { useNetConfig } from "./hooks/useNetConfig";
-import { useSerialConnection } from "./hooks/useSerialConnection";
 import { useSites } from "./hooks/useSites";
+import { useFlowHubs } from "./hooks/useFlowHubs";
 import { useRuleEngine } from "./hooks/useRuleEngine";
 import { buildLegacyRuleContext } from "./rules/adapters";
+import { releaseSerialClient } from "./serial/serialClient";
+import { releaseLiveClient } from "./live/liveClient";
+import { DEFAULT_HUB_ID } from "./config/hubDefaults";
 import { FiltrationDiagram } from "./components/FiltrationDiagram";
-import { IOConfigPage } from "./components/IOConfigPage";
-import { NetworkConfigPage } from "./components/NetworkConfigPage";
 import { LiveRelayPanel } from "./components/LiveRelayPanel";
 import { RulesPage } from "./components/RulesPage";
 import { SiteSwitcher } from "./components/SiteSwitcher";
 import { GenericSiteShell } from "./components/GenericSiteShell";
+import { HubsPage } from "./components/HubsPage";
 import { TEMPLATES } from "./config/templates";
 
-type View = "diagram" | "io-config" | "network" | "automation";
+type View = "diagram" | "hubs" | "automation";
 
 function HeaderClock() {
   const [now, setNow] = useState(new Date());
@@ -42,10 +42,24 @@ function NavTab({ label, active, onClick }: { label: string; active: boolean; on
 function App() {
   const [view, setView] = useState<View>("diagram");
   const { state, controls, isLive, live } = useFiltrationData();
-  const ioConfig = useIOConfig();
-  const netConfig = useNetConfig();
-  const serial = useSerialConnection();
-  const { sites, activeSite, setActiveSiteId, createSite, deleteSite, renameSite, updateSite } = useSites();
+  const { sites, activeSite, setActiveSiteId, createSite, deleteSite, renameSite, updateSite, clearHubReferences } = useSites();
+  const { hubs, activeHubId, setActiveHubId, createHub, deleteHub, renameHub } = useFlowHubs();
+
+  // Every device across every site, at once -- only App.tsx/useSites ever
+  // see all sites, so this is the only place a hub's channel-conflict check
+  // can be computed correctly (a real board's budget is shared across every
+  // site an operator models devices under, not just the one on screen).
+  const allDevices = useMemo(
+    () => sites.flatMap((s) => s.devices.map((d) => ({ device: d, siteId: s.id, siteName: s.name }))),
+    [sites],
+  );
+
+  function handleDeleteHub(id: string) {
+    clearHubReferences(id);
+    deleteHub(id);
+    releaseSerialClient(id);
+    releaseLiveClient(id);
+  }
 
   const allOpen = state.pump.running && state.solenoids[1].open && state.solenoids[2].open && state.solenoids[3].open;
   const waitingForDevice = live.status === "connected" && !isLive;
@@ -57,12 +71,6 @@ function App() {
   const legacySite = sites.find((s) => s.isLegacy);
   const legacyRuleCtx = buildLegacyRuleContext(state, controls);
   useRuleEngine(legacyRuleCtx, legacySite?.rules ?? [], false);
-
-  // Generic sites have no I/O Config tab -- if the operator switches to one
-  // while that tab happens to be open, fall back to the diagram tab. This is
-  // computed rather than pushed back into `view` via an effect so switching
-  // sites can't trigger an extra render pass.
-  const currentView = !activeSite.isLegacy && view === "io-config" ? "diagram" : view;
 
   const headerTitle = activeSite.isLegacy ? "WATER FILTRATION SCADA HMI" : activeSite.name.toUpperCase();
   const headerSubtitle = activeSite.isLegacy
@@ -82,12 +90,9 @@ function App() {
           </div>
 
           <nav className="flex items-center gap-1 panel-bevel rounded-lg p-1 flex-wrap">
-            <NavTab label="Process Diagram" active={currentView === "diagram"} onClick={() => setView("diagram")} />
-            {activeSite.isLegacy && (
-              <NavTab label="I/O Config" active={currentView === "io-config"} onClick={() => setView("io-config")} />
-            )}
-            <NavTab label="Network" active={currentView === "network"} onClick={() => setView("network")} />
-            <NavTab label="Automation" active={currentView === "automation"} onClick={() => setView("automation")} />
+            <NavTab label="Process Diagram" active={view === "diagram"} onClick={() => setView("diagram")} />
+            <NavTab label="Flow Hubs" active={view === "hubs"} onClick={() => setView("hubs")} />
+            <NavTab label="Automation" active={view === "automation"} onClick={() => setView("automation")} />
           </nav>
 
           <div className="flex items-center gap-3">
@@ -118,9 +123,9 @@ function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-5 flex flex-col gap-5">
-        {currentView === "diagram" && activeSite.isLegacy && (
+        {view === "diagram" && activeSite.isLegacy && (
           <>
-            <LiveRelayPanel status={live.status} log={live.log} connect={live.connect} disconnect={live.disconnect} />
+            <LiveRelayPanel hubId={DEFAULT_HUB_ID} status={live.status} log={live.log} connect={live.connect} disconnect={live.disconnect} />
 
             <div className="panel-bevel rounded-lg px-4 py-2.5 flex items-center justify-between gap-4 flex-wrap">
               <span className="text-xs text-scada-text-dim">
@@ -157,27 +162,19 @@ function App() {
           </>
         )}
 
-        {currentView === "io-config" && (
-          <IOConfigPage
-            points={ioConfig.points}
-            onSetSignalType={ioConfig.setSignalType}
-            onSetPin={ioConfig.setPin}
-            onReset={ioConfig.resetToDefaults}
-            serial={serial}
+        {view === "hubs" && (
+          <HubsPage
+            hubs={hubs}
+            activeHubId={activeHubId}
+            allDevices={allDevices}
+            onSelectHub={setActiveHubId}
+            onCreateHub={createHub}
+            onDeleteHub={handleDeleteHub}
+            onRenameHub={renameHub}
           />
         )}
 
-        {currentView === "network" && (
-          <NetworkConfigPage
-            config={netConfig.config}
-            onSetField={netConfig.setField}
-            onLoadFromDevice={netConfig.loadFromDevice}
-            onReset={netConfig.resetToDefaults}
-            serial={serial}
-          />
-        )}
-
-        {currentView === "automation" && activeSite.isLegacy && (
+        {view === "automation" && activeSite.isLegacy && (
           <RulesPage
             rules={activeSite.rules}
             ctx={legacyRuleCtx}
@@ -185,12 +182,14 @@ function App() {
           />
         )}
 
-        {!activeSite.isLegacy && (currentView === "diagram" || currentView === "automation") && (
+        {!activeSite.isLegacy && (view === "diagram" || view === "automation") && (
           <GenericSiteShell
             key={activeSite.id}
             site={activeSite}
-            view={currentView === "automation" ? "automation" : "diagram"}
+            view={view === "automation" ? "automation" : "diagram"}
             onUpdateSite={(updater) => updateSite(activeSite.id, updater)}
+            hubs={hubs}
+            allDevices={allDevices}
           />
         )}
       </main>

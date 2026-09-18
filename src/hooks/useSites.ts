@@ -80,5 +80,20 @@ export function useSites() {
     setSites((prev) => prev.map((s) => (s.id === id ? updater(s) : s)));
   }
 
-  return { sites, activeSite, activeSiteId, setActiveSiteId, createSite, deleteSite, renameSite, updateSite };
+  // Clears every reference to a hub that's about to be deleted, across every
+  // site at once -- useSites is the only hook with visibility into every
+  // site's devices, same reason createSite/deleteSite/updateSite all live
+  // here instead of being split across per-site state. Called from App.tsx
+  // before useFlowHubs.deleteHub actually removes the hub.
+  function clearHubReferences(hubId: string) {
+    setSites((prev) =>
+      prev.map((s) => ({
+        ...s,
+        defaultHubId: s.defaultHubId === hubId ? undefined : s.defaultHubId,
+        devices: s.devices.map((d) => (d.hubId === hubId ? { ...d, hubId: undefined } : d)),
+      })),
+    );
+  }
+
+  return { sites, activeSite, activeSiteId, setActiveSiteId, createSite, deleteSite, renameSite, updateSite, clearHubReferences };
 }

@@ -7,6 +7,14 @@ the **I/O Config** and **Network** pages to work.
 
 Source of truth in code: [`src/serial/protocol.ts`](../src/serial/protocol.ts).
 
+Each FlowHub board is a separate USB serial connection -- the HMI can hold a
+port open per hub concurrently (via `getSerialClient(hubId)` in
+[`src/serial/serialClient.ts`](../src/serial/serialClient.ts)), subject to
+the operator granting the browser access to each physical port once. As
+with the live relay protocol, there is no hub identifier in this wire
+format; a hub's identity is entirely which serial port the messages flow
+over.
+
 ## Transport
 
 | Setting     | Value                                    |
